@@ -10,9 +10,9 @@ import csv
 def main():
     x = 0
     parser = argparse.ArgumentParser()
-    parser.add_argument('--f', type=str, help='string', required=True)
+    parser.add_argument('--f', type=str, help='function name', required=True)
     parser.add_argument('--x', type=int, help='integer')
-    parser.add_argument('--i', type=str, help='string')
+    parser.add_argument('--i', type=str, help='input file')
     args = parser.parse_args()
 
     func = getattr(sys.modules[__name__], args.f)
@@ -34,8 +34,7 @@ def main():
 
     sys.exit(0)
 
-
-# 
+ 
 def get_divisor_sum(x):
     if x == 0:
         return 0
@@ -44,7 +43,6 @@ def get_divisor_sum(x):
 
     return reduce(f,range(1, x + 1))
 
-#
 def prime_factorization(x):
         
     n = 2
