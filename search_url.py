@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 
 import sys
+import multiprocessing
 from multiprocessing import Pool
 from multiprocessing import Process
 import urllib2
@@ -30,48 +31,41 @@ def main():
 
     res = func(args.k, args.u)
 
-
+    print(res)
 
 def search(keyword, url):
 
     res = [url]
-    search = Search(keyword)
+    search = Search(keyword,[])
     # base url
     urls = search.search_content(url)
     if urls == True:
         return res
     elif urls == False:
         return 'missed url'
-
-    urls = ['http://tredina.com/user/nodokappg/',
-            'http://tredina.com/user/MereMerNOZAWA/',
-            'http://tredina.com/user/sayakaaoe/',
-            'http://tredina.com/salon/H000232020/'
-    ]
-
-    #pool = Pool(2)
-    res = multi(keyword,urls,Pool(2),res)
-
-    print(res)
+        
+    # cpuの数分並列で探索する
+    cpus = multiprocessing.cpu_count()
+    res = search_multi(keyword,urls,Pool(cpus),[url])
+                
     return res
 
-def multi(keyword,urls,pool,parent):
-    tmp = pool.map(Search(keyword), urls)
+def search_multi(keyword,urls,pool,parent):
+    tmp = pool.map(Search(keyword,parent), urls)
     try:
         index = tmp.index(True)
         parent.append(urls[index])
     except ValueError as e:
         print(e)
         for urls in tmp:
-            multi(keyword,urls,pool,parent)
+            parent = search_multi(keyword,urls,pool,parent)
 
     return parent
 
 class Search():
-    def __init__(self, keyword):
+    def __init__(self, keyword,exclude_url):
         self.keyword = keyword
-        self.exclude_url = []
-        print(pattern)
+        self.exclude_url = exclude_url
         self.reg = re.compile(pattern)
         self.reg_absolute_path = re.compile('http[s]?:\/\/([\w-]+\.)+[\w-]+')
 
