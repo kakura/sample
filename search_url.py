@@ -12,7 +12,7 @@ import re
 
 domain_pattern = '(http[s]?:\/\/([\w-]+\.)+[\w-]+)?'
 path_pattern = '(\/[\w\- \.\/\?%&=]*)?'
-exclude_pattern = '(?!.*\.(js|css|js|jpe?g|png|gif|svg|map|mpg|flv|swf))'
+exclude_pattern = '(?!.*\.(js|ico|css|js|jpe?g|png|gif|svg|map|mpg|flv|swf))'
 pattern = '(href="' + domain_pattern
 pattern += exclude_pattern
 pattern += path_pattern+')'
@@ -35,32 +35,40 @@ def main():
 
 def search(keyword, url):
 
-    res = [url]
-    search = Search(keyword,[])
-    # base url
-    urls = search.search_content(url)
-    if urls == True:
-        return res
-    elif urls == False:
-        return 'missed url'
-        
-    # cpuの数分並列で探索する
-    cpus = multiprocessing.cpu_count()
-    res = search_multi(keyword,urls,Pool(cpus),[url])
-                
+    res = []
+    base_url = url
+    # queue
+    queue = [url]
+    #親子関係を保持
+    tree = []
+
+    search = Search(keyword, [])
+    # レベル順探索
+    while len(queue) > 0:
+        url = queue.pop(0)
+        childs = search.search_content(url)
+        print(childs)
+        if childs == True:
+            # 探索終了
+            break
+        elif childs == False or len(childs) <= 0:
+            continue
+
+        # qに子ノードを追加
+        queue.extend(childs)
+
+        tree.append({url: childs})
+
+    # 親子関係をたどってlist作成
+    res.insert(0, url)
+    while len(tree) > 0:
+        node = tree.pop()
+        if url in (node.values())[0]:
+            url = (node.keys())[0]
+            res.insert(0, url)
+            
+            
     return res
-
-def search_multi(keyword,urls,pool,parent):
-    tmp = pool.map(Search(keyword,parent), urls)
-    try:
-        index = tmp.index(True)
-        parent.append(urls[index])
-    except ValueError as e:
-        print(e)
-        for urls in tmp:
-            parent = search_multi(keyword,urls,pool,parent)
-
-    return parent
 
 class Search():
     def __init__(self, keyword,exclude_url):
@@ -79,7 +87,6 @@ class Search():
             return True
                 
         else:
-            self.exclude_url.append(url)
             return self.__search_url(content,url)
                 
 
@@ -97,11 +104,12 @@ class Search():
 
         for s in urls:
             url = s[0].replace('href="','')
-            if url not in res and url not in self.exclude_url:
-                if self.reg_absolute_path.match(url):
-                    res.append(url)
-                else:
-                    res.append(domain + url)
+            if self.reg_absolute_path.match(url) is None:
+                url = domain + url
+
+            if url not in self.exclude_url:               
+                res.append(url)
+                self.exclude_url.append(url)
 
         return res
     
